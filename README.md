@@ -2,11 +2,6 @@
 SharpNetworkScanner is a C# utility designed for network scanning. It provides users with a flexible and customizable way to perform network scans with various options.
 ## Usage
 ```
-░█▀▀░█░█░█▀█░█▀▄░█▀█  ░█▀█░█▀▀░▀█▀░█░█░█▀█░█▀▄░█░█  ░█▀▀░█▀▀░█▀█░█▀█░█▀█░█▀▀░█▀▄
-░▀▀█░█▀█░█▀█░█▀▄░█▀▀  ░█░█░█▀▀░░█░░█▄█░█░█░█▀▄░█▀▄  ░▀▀█░█░░░█▀█░█░█░█░█░█▀▀░█▀▄
-░▀▀▀░▀░▀░▀░▀░▀░▀░▀    ░▀░▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀░▀░▀░▀  ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀░▀░▀▀▀░▀░▀
-                                                                    By Mor David
-
 Usage: SharpNetworkScan.exe [-t|--target <target>] [-f|--file <file>] [-p|--port <port>] [-th|--threads <threads>] [-to|--timeout <timeout>] [-o|--output <outputFile>] [-h|--help]
 Options:
   -t, --target      Specify a target.
