@@ -25,6 +25,7 @@ class SharpNetworkScanner
         Console.WriteLine("  -to, --timeout    Specify the timeout value in milliseconds.");
         Console.WriteLine("  -o, --output      Specify the output file.");
         Console.WriteLine("  -h, --help        Display this help message.");
+        Console.WriteLine("  -v, --verbose        Verbose.");
     }
     static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
     static async Task WriteToFileAsync(string outputFile, string text)
@@ -41,7 +42,6 @@ class SharpNetworkScanner
             }
             catch (IOException ex)
             {
-                // Handle the IOException (log, display a message, etc.)
                 Console.WriteLine($"Error writing to file {outputFile}: {ex.Message}");
             }
             finally
@@ -61,6 +61,7 @@ class SharpNetworkScanner
         List<int> ports = new List<int> { 20, 21, 22, 23, 53, 80, 88, 110, 123, 135, 136, 137, 138, 139, 143, 161, 162, 389, 443, 445, 636, 993, 995, 1433, 1434, 2049, 3306, 3389, 5985, 5986 }; // Default ports
         int numThreads = 1; // Default number of threads
         int timeout = 10000; // Default timeout in milliseconds
+        bool verbose = false;
         string outputFile = ""; // Default output file
 
         Console.WriteLine(@"
@@ -79,6 +80,10 @@ class SharpNetworkScanner
             string arg = args[i];
             switch (arg)
             {
+                case "-v":
+                case "--verbose":
+                    verbose = true;
+                    break;
                 case "-h":
                 case "--help":
                     PrintHelp();
@@ -180,7 +185,7 @@ class SharpNetworkScanner
 
         foreach (var targetEntry in targets.Distinct())
         {
-            tasks.Add(Task.Run(() => ScanTargets(targetEntry, ports.Distinct(), timeout, outputFile, numThreads)));
+            tasks.Add(Task.Run(() => ScanTargets(targetEntry, ports.Distinct(), timeout, outputFile, numThreads, verbose)));
         }
 
         await Task.WhenAll(tasks);
@@ -200,19 +205,19 @@ class SharpNetworkScanner
         }
     }
 
-    static async Task ScanTargets(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads)
+    static async Task ScanTargets(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads, bool verbose)
     {
         if (IPAddressRange.TryParse(target, out _))
         {
-            await ScanSubnet(target, ports, timeout, outputFile, numThreads);
+            await ScanSubnet(target, ports, timeout, outputFile, numThreads, verbose);
         }
         else
         {
-            await ScanPorts(target, ports, timeout, outputFile, numThreads);
+            await ScanPorts(target, ports, timeout, outputFile, numThreads, verbose);
         }
     }
 
-    static async Task ScanPorts(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads)
+    static async Task ScanPorts(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads, bool verbose)
     {
         List<string> openPorts = new List<string>();
 
@@ -232,7 +237,20 @@ class SharpNetworkScanner
                 if (IsPortOpen(target, port, timeout))
                 {
                     openPorts.Add(port.ToString());
-                    Console.WriteLine($"{target}:{port}");
+                    if (verbose == false)
+                    {
+                        Console.WriteLine($"{target}:{port}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[+] {target}:{port} is open");
+                    }
+                }
+                else
+                {
+                    if (verbose == true) {
+                        Console.WriteLine($"[-] {target}:{port} is down");
+                    }
                 }
             }
             catch (Exception ex)
@@ -269,11 +287,11 @@ class SharpNetworkScanner
         }
     }
 
-    static async Task ScanSubnet(string subnet, IEnumerable<int> ports, int timeout, string outputFile, int numThreads)
+    static async Task ScanSubnet(string subnet, IEnumerable<int> ports, int timeout, string outputFile, int numThreads, bool verbose)
     {
         List<string> openPorts = new List<string>();
 
-        Console.WriteLine($"[+] Scanning {subnet}...");
+        Console.WriteLine($"Scanning {subnet}...");
 
         // Generate a list of IP addresses in the specified subnet
         List<IPAddress> ipAddresses = GetIpAddressesInSubnet(subnet);
@@ -283,7 +301,7 @@ class SharpNetworkScanner
 
         var tasks = ipAddresses.Select(ip => Task.Run(async () =>
         {
-            await ScanPorts(ip.ToString(), ports, timeout, outputFile, numThreads);
+            await ScanPorts(ip.ToString(), ports, timeout, outputFile, numThreads, verbose);
         }));
 
         await Task.WhenAll(tasks);
