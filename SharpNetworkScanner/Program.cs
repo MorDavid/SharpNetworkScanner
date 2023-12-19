@@ -16,7 +16,7 @@ class SharpNetworkScanner
     {
         Console.WriteLine("Usage: SharpNetworkScan.exe [-t|--target <target>] [-f|--file <file>] [-p|--port <port>] " +
                           "[-th|--threads <threads>] [-to|--timeout <timeout>] [-o|--output <outputFile>] " +
-                          "[-h|--help]");
+                          "[-h|--help] [-v|--verbose]");
         Console.WriteLine("Options:");
         Console.WriteLine("  -t, --target      Specify a target.");
         Console.WriteLine("  -f, --file        Specify a file containing targets.");
