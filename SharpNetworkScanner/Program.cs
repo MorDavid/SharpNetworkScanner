@@ -27,7 +27,29 @@ class SharpNetworkScanner
         Console.WriteLine("  -h, --help        Display this help message.");
     }
     static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
-
+    static async Task WriteToFileAsync(string outputFile, string text)
+    {
+        if (outputFile != "")
+        {
+            await semaphoreSlim.WaitAsync();
+            try
+            {
+                using (StreamWriter writer = File.AppendText(outputFile))
+                {
+                    writer.WriteLine($"{text}");
+                }
+            }
+            catch (IOException ex)
+            {
+                // Handle the IOException (log, display a message, etc.)
+                Console.WriteLine($"Error writing to file {outputFile}: {ex.Message}");
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
+        }
+    }
     static async Task Main(string[] args)
     {
         // Create a Stopwatch instance
@@ -39,7 +61,7 @@ class SharpNetworkScanner
         List<int> ports = new List<int> { 20, 21, 22, 23, 53, 80, 88, 110, 123, 135, 136, 137, 138, 139, 143, 161, 162, 389, 443, 445, 636, 993, 995, 1433, 1434, 2049, 3306, 3389, 5985, 5986 }; // Default ports
         int numThreads = 1; // Default number of threads
         int timeout = 10000; // Default timeout in milliseconds
-        string outputFile = "output.csv"; // Default output file
+        string outputFile = ""; // Default output file
 
         Console.WriteLine(@"
 ░█▀▀░█░█░█▀█░█▀▄░█▀█  ░█▀█░█▀▀░▀█▀░█░█░█▀█░█▀▄░█░█  ░█▀▀░█▀▀░█▀█░█▀█░█▀█░█▀▀░█▀▄
@@ -153,15 +175,8 @@ class SharpNetworkScanner
         List<Task> tasks = new List<Task>();
 
         // Write header to CSV file
-        await semaphoreSlim.WaitAsync();
-        try
-        {
-            File.WriteAllText(outputFile, "Target,OpenPorts\n");
-        }
-        finally
-        {
-            semaphoreSlim.Release();
-        }
+        await WriteToFileAsync(outputFile, "Target,OpenPorts");
+        
 
         foreach (var targetEntry in targets.Distinct())
         {
@@ -175,7 +190,14 @@ class SharpNetworkScanner
         // Get the elapsed time in seconds
         TimeSpan elapsedTime = stopwatch.Elapsed;
         Console.WriteLine($"Execution Time: {elapsedTime.TotalSeconds} seconds");
-        Console.WriteLine("[+] Done ... Saved in " + outputFile);
+        if (outputFile != "")
+        {
+            Console.WriteLine("[+] Done ... Saved in " + outputFile);
+        }
+        else
+        {
+            Console.WriteLine("[+] Done");
+        }
     }
 
     static async Task ScanTargets(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads)
@@ -193,8 +215,6 @@ class SharpNetworkScanner
     static async Task ScanPorts(string target, IEnumerable<int> ports, int timeout, string outputFile, int numThreads)
     {
         List<string> openPorts = new List<string>();
-
-        Console.WriteLine($"[+] Scanning random ports for {target}...");
 
         // Generate a random list of ports for each host
         List<int> randomPorts = ports.OrderBy(p => Guid.NewGuid()).ToList();
@@ -215,6 +235,12 @@ class SharpNetworkScanner
                     Console.WriteLine($"{target}:{port}");
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("MD Error: ");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+            }
             finally
             {
                 // Release semaphore when the task is done
@@ -224,27 +250,22 @@ class SharpNetworkScanner
 
         await Task.WhenAll(tasks);
 
-        await semaphoreSlim.WaitAsync();
-        try
+        // Write results to CSV file 
+        string t_ports = "";
+        foreach (string port in openPorts)
         {
-            // Write results to CSV file 
-            string t_ports = "";
-            foreach (string port in openPorts)
+            if (port.Contains(":"))
             {
-                if (port.Contains(":")) {
-                    t_ports = port.Split(':')[1] + "," + t_ports;
-                }
-                else
-                {
-                    t_ports = port + "," + t_ports;
-                }
+                t_ports = port.Split(':')[1] + "," + t_ports;
             }
-            t_ports = t_ports.Remove(t_ports.Length - 1);
-            File.AppendAllText(outputFile, $"\"{target}\",\"{t_ports}\"{Environment.NewLine}");//
+            else
+            {
+                t_ports = port + "," + t_ports;
+            }
         }
-        finally
+        if (t_ports != "")
         {
-            semaphoreSlim.Release();
+            await WriteToFileAsync(outputFile, $"\"{target}\",\"{t_ports}\"");
         }
     }
 
@@ -252,7 +273,7 @@ class SharpNetworkScanner
     {
         List<string> openPorts = new List<string>();
 
-        Console.WriteLine($"[+] Scanning subnet {subnet}...");
+        Console.WriteLine($"[+] Scanning {subnet}...");
 
         // Generate a list of IP addresses in the specified subnet
         List<IPAddress> ipAddresses = GetIpAddressesInSubnet(subnet);
